@@ -6,3 +6,4 @@ build
 functions
 .env
 static/assets/work files/
+.vercel
