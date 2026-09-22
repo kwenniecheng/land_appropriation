@@ -1,0 +1,188 @@
+{
+	"meta": {
+		"title": "Internet Shutdowns",
+		"description": "Disconnecting countries from the world"
+	},
+	"body": [
+		{
+			"section": "section1-text-only",
+			"content": [
+				{ "type": "h2", "value": "Section 1: Text Only" },
+				{
+					"type": "text",
+					"value": "This section contains only text. You can write your story here. Add as much text as you need. Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+				},
+				{
+					"type": "text",
+					"value": "Add multiple paragraphs by adding more text objects to the content array."
+				}
+			]
+		},
+		{
+			"section": "section2-image-callout",
+			"content": [
+				{ "type": "h2", "value": "Section 2: Image with Callout" },
+				{
+					"type": "img",
+					"value": { "src": "../assets/demo/test.jpg", "alt": "Your image description" }
+				},
+				{
+					"type": "text",
+					"value": "Caption or callout text for the image appears below."
+				}
+			]
+		},
+		{
+			"section": "section3-text-only",
+			"content": [
+				{ "type": "h2", "value": "Section 3: Text Only" },
+				{
+					"type": "text",
+					"value": "Another text-only section. Use this for story narration, quotes, or explanatory content."
+				}
+			]
+		},
+		{
+			"section": "section4-scrolly",
+			"content": [
+				{ "type": "h2", "value": "Section 4: Scrolling Animation with Multiple Callouts" },
+				{
+					"type": "text",
+					"value": "As you scroll down, different callouts will appear one after another."
+				},
+				{ "type": "text", "value": "First callout: This appears as you start scrolling through this section." },
+				{ "type": "text", "value": "Second callout: This appears after you scroll further." },
+				{ "type": "text", "value": "Third callout: This appears near the end of this section." }
+			]
+		},
+		{
+			"section": "section5-image-callout",
+			"content": [
+				{ "type": "h2", "value": "Section 5: Image with Callout" },
+				{
+					"type": "img",
+					"value": { "src": "../assets/demo/test.jpg", "alt": "Another image" }
+				},
+				{
+					"type": "text",
+					"value": "Important insight or data point about this image."
+				}
+			]
+		},
+		{
+			"section": "section6-text-only",
+			"content": [
+				{ "type": "h2", "value": "Section 6: Text Only" },
+				{
+					"type": "text",
+					"value": "Continue your narrative here. This is a key moment in your story where you explain important context."
+				}
+			]
+		},
+		{
+			"section": "section7-scrolly-images",
+			"content": [
+				{ "type": "h2", "value": "Section 7: Horizontal Image Scroll" },
+				{
+					"type": "text",
+					"value": "Scroll through multiple images horizontally. First image appears as you scroll in."
+				},
+				{
+					"type": "img",
+					"value": { "src": "../assets/demo/test.jpg", "alt": "Image 1" }
+				},
+				{
+					"type": "text",
+					"value": "Second image appears as you continue scrolling."
+				},
+				{
+					"type": "img",
+					"value": { "src": "../assets/demo/test.jpg", "alt": "Image 2" }
+				},
+				{
+					"type": "text",
+					"value": "Third image appears at the end of this scroll section."
+				},
+				{
+					"type": "img",
+					"value": { "src": "../assets/demo/test.jpg", "alt": "Image 3" }
+				}
+			]
+		},
+		{
+			"section": "section8-text-only",
+			"content": [
+				{ "type": "h2", "value": "Section 8: Text Only" },
+				{
+					"type": "text",
+					"value": "Bring your story back to a text focus. Reflect on what the user has learned so far."
+				}
+			]
+		},
+		{
+			"section": "section9-image-callout",
+			"content": [
+				{ "type": "h2", "value": "Section 9: Image with Callout" },
+				{
+					"type": "img",
+					"value": { "src": "../assets/demo/test.jpg", "alt": "Key image" }
+				},
+				{
+					"type": "text",
+					"value": "A critical statistic or finding highlighted with this image."
+				}
+			]
+		},
+		{
+			"section": "section10-scrolly",
+			"content": [
+				{ "type": "h2", "value": "Section 10: Scrolling Animation with Multiple Callouts" },
+				{
+					"type": "text",
+					"value": "Different insights appear as you scroll through this section."
+				},
+				{ "type": "text", "value": "First insight: Set the scene." },
+				{ "type": "text", "value": "Second insight: Build the story." },
+				{ "type": "text", "value": "Third insight: Reveal the impact." }
+			]
+		},
+		{
+			"section": "section11-text-only",
+			"content": [
+				{ "type": "h2", "value": "Section 11: Text Only" },
+				{
+					"type": "text",
+					"value": "Another text section to provide context or transition between visual content."
+				}
+			]
+		},
+		{
+			"section": "section12-image-callout",
+			"content": [
+				{ "type": "h2", "value": "Section 12: Image with Callout" },
+				{
+					"type": "img",
+					"value": { "src": "../assets/demo/test.jpg", "alt": "Conclusion image" }
+				},
+				{
+					"type": "text",
+					"value": "What does this image tell us about the situation?"
+				}
+			]
+		},
+		{
+			"section": "section13-conclusion",
+			"content": [
+				{ "type": "h2", "value": "Section 13: Conclusion" },
+				{
+					"type": "text",
+					"value": "Wrap up your story here. What did we learn? What should readers take away from this?"
+				},
+				{
+					"type": "text",
+					"value": "Thank you for reading this scrollytelling story about internet shutdowns."
+				}
+			]
+		}
+	]
+}

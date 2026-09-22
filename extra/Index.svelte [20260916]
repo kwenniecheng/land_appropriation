@@ -1,0 +1,928 @@
+<script>
+	import { onMount } from "svelte";
+
+	// ─── CONFIGURATION ───────────────────────────────────────────────
+	// Image base path (relative to /static)
+	const IMG_BASE = "images/landonteigening";
+
+	// Images that should NOT show a callout
+	// Add or remove image numbers here
+	const NO_CALLOUT = new Set([4, 5, 6, 7, 8, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 27, 30, 31, 32, 33, 34, 35, 36, 37, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 64]);
+
+	// Gap between images in scroll tracks (px)
+	const GAP = 10;
+
+	// ─── CALLOUT TEXTS ───────────────────────────────────────────────
+	// Each key = image number, value = callout text string.
+	// To add a callout: add the image number as key and your text as value.
+	// To remove a callout: either delete the entry OR add the image number to NO_CALLOUT.
+	// To customize a callout's position/style: see "CALLOUT LAYOUTS" below.
+	const calloutTexts = {
+		1: "I'm on a family visit in China and meet my grandmother for the first time.",
+		2: "During a full-face massage, I look around and see a lot of green.",
+		3: "Callout for image 3",
+		4: "Callout for image 4",
+		5: "Callout for image 5",
+		6: "Callout for image 6",
+		7: "Callout for image 7",
+		8: "Callout for image 8",
+		9: "Callout for image 9",
+		10: "Callout for image 10",
+		12: "In a few years the vegetable garden won't be there anymore.",
+		13: "Callout for image 13",
+		14: "A gas station.",
+		15: "Callout for image 15",
+		16: "Callout for image 16",
+		17: "Callout for image 17",
+		18: "Callout for image 18",
+		19: "Callout for image 19",
+		20: "Callout for image 20",
+		21: "Callout for image 21",
+		22: "Callout for image 22",
+		23: "Callout for image 23",
+		24: "Callout for image 24",
+		26: "Callout for image 26",
+		27: "Callout for image 27",
+		28: "Callout for image 28",
+		29: "Callout for image 29",
+		30: "Callout for image 30",
+		31: "Callout for image 31",
+		32: "Callout for image 32",
+		33: "Callout for image 33",
+		34: "Callout for image 34",
+		35: "Callout for image 35",
+		36: "Callout for image 36",
+		38: "Callout for image 38",
+		39: "Callout for image 39",
+		40: "Callout for image 40",
+		41: "Callout for image 41",
+		42: "Callout for image 42",
+		43: "Callout for image 43",
+		44: "Callout for image 44",
+		45: "Callout for image 45",
+		46: "Callout for image 46",
+		47: "Callout for image 47",
+		48: "Callout for image 48",
+		49: "Callout for image 49",
+		50: "Callout for image 50",
+		52: "I'm back in China, searching for the place my grandmother's house used to be.",
+		53: "There's no trace of my grandmother's farmers life that used to be here.",
+		55: "Callout for image 55",
+		56: "Callout for image 56",
+		57: "Callout for image 57",
+		58: "Callout for image 58",
+		59: "Callout for image 59",
+		61: "Callout for image 61",
+		62: "Callout for image 62",
+		63: "Callout for image 63",
+		64: "Callout for image 64"
+	};
+
+	// ─── CALLOUT LAYOUTS ─────────────────────────────────────────────
+	// Per-image callout positioning and styling overrides.
+	// Define reusable layout presets, then assign images to them.
+	// Each preset can have: position, background, textAlign, paddingTop, paddingLeft
+	const CALLOUT_PRESETS = {
+		topLeft: { position: "top-left", background: "transparent", textAlign: "left", paddingTop: 100, paddingLeft: 50, maxWidth: 40 },
+		topRight: { position: "top-right", background: "transparent", textAlign: "right", paddingTop: 20, paddingLeft: 50, maxWidth: 40 },
+		centered: { position: "top-center", background: "transparent", textAlign: "center", paddingTop: 20, paddingLeft: 0, maxWidth: 50 },
+		centeredBottom: { position: "bottom-center", background: "transparent", textAlign: "center", paddingTop: 60, paddingLeft: 0, maxWidth: 50 },
+		// Add your own presets here:
+		// bottomRight: { position: "bottom-right", background: "transparent", textAlign: "right", paddingTop: 0, paddingLeft: 0 },
+	};
+
+	// Map image numbers to a preset name.
+	// Images NOT listed here default to "centered".
+	// Multiple images can share the same preset — no need to copy-paste.
+	const calloutLayoutMap = {
+		1: "topLeft",
+		2: "topRight",
+		12: "centered",
+		26: "centered",
+		52: "centeredBottom",
+		53: "centeredBottom",
+		61: "topRight",
+		62: "topRight",
+		63: "centered",
+		// 5: "topLeft",   ← uncomment to make image 26 same as image 1
+	};
+
+	function getCalloutLayout(imgNum) {
+		const presetName = calloutLayoutMap[imgNum] || "centered";
+		return CALLOUT_PRESETS[presetName] || CALLOUT_PRESETS.centered;
+	}
+
+	function calloutPositionStyle(layout) {
+		if (!layout || layout.position === "center") return "";
+		const s = [];
+		if (layout.position.includes("top")) s.push(`top:${layout.paddingTop ?? 0}px;`);
+		if (layout.position.includes("bottom")) s.push(`bottom:${layout.paddingBottom ?? layout.paddingTop ?? 0}px;`);
+		if (layout.position.includes("left")) s.push(`left:${layout.paddingLeft ?? 0}px;`);
+		if (layout.position.includes("right")) s.push(`right:${layout.paddingRight ?? layout.paddingLeft ?? 0}px;`);
+		return s.join("");
+	}
+
+	function calloutAlignStyle(layout) {
+		if (!layout) return "";
+		const parts = [`text-align:${layout.textAlign ?? "center"};`];
+		if (layout.maxWidth) parts.push(`max-width:${layout.maxWidth}%;`);
+		return parts.join("");
+	}
+
+	function calloutClasses(layout) {
+		if (!layout || layout.position === "center") return "callout-overlay-inner";
+		return `callout-overlay-inner callout-pos-${layout.position}`;
+	}
+
+	// ─── SECTIONS ────────────────────────────────────────────────────
+	// Define the scrollytelling sequence here.
+	// Types:
+	//   "header"         — full-viewport cover image with title/subtitle
+	//   "fade"           — images crossfade into each other (scrolljacked)
+	//   "horizontal"     — images slide horizontally (scrolljacked)
+	//   "vertical"       — images stacked naturally, you scroll through them
+	//   "vertical-scroll"— images scroll vertically (scrolljacked, direction "up" or "down")
+	//
+	// Boundary images: if image N is the last in one section and first in the next,
+	// it appears in both — creating a visual bridge between sections.
+	const sections = [
+		{ type: "header", title: "Land appropriation", subtitle: "My grandmother lost her land little by little because to the local government. Her response was not what I thought it would be.", image: `${IMG_BASE}/header.webp` },
+		{ type: "fade", images: [2, 3, 4, 5] },
+		{ type: "text", content: "But the land she farms on is not hers. In China, land in urban areas is state owned but private individuals and companies can hold users rights. In rural areas, land belongs to the community: it’s collectively owned. But it’s not clearly defined who this collective is, not even in the rule of law. In practise it boils down to local authorities claiming the land." },
+		/*{ type: "horizontal", images: [6, 7, 8, 9, 10, 11] },*/
+		{ type: "fade", images: [12, 13, 14, 15] },
+		/*{ type: "horizontal", images: [16, 17, 18, 19, 20, 21, 22, 23, 24, 25] },*/
+		{ type: "vertical", images: [26, 27, 28, 29] },
+		/*{ type: "horizontal", images: [30, 31, 32, 33, 34, 35, 36, 37] },*/
+		{ type: "vertical", images: [38, 39, 40, 41, 42] },
+		{ type: "fade", images: [41, 42, 43] },
+		/*{ type: "horizontal", images: [44, 45, 46, 47, 48, 49, 50, 51] },*/
+		{ type: "fade", images: [52, 53, 54] },
+		/*{ type: "horizontal", images: [55, 56, 57, 58, 59, 60] },*/
+		{ type: "fade", images: [61, 62, 63, 64] }
+	];
+
+	// ─── RUNTIME STATE ───────────────────────────────────────────────
+	let activeCallouts = $state({});
+	let sectionProgress = $state({});
+	let verticalActiveImg = $state({});
+	let verticalSectionVisible = $state({});
+	let containerEl;
+	let headerProgress = $state(0);
+	let footerProgress = $state(0);
+
+	const NATIVE_ASPECT = 2400 / 1350; // full image, no crop (desktop)
+	const MOBILE_ASPECT = 3 / 4;       // narrower than native → image scales to fill height, sides get cropped
+	const MOBILE_BREAKPOINT = 767;
+
+	let frameWidth = $state(300);
+	let frameHeight = $state(300);
+
+	function computeFrameSize() {
+		const w = window.innerWidth;
+		const aspect = w <= MOBILE_BREAKPOINT ? MOBILE_ASPECT : NATIVE_ASPECT;
+		return { width: w, height: w / aspect };
+	}
+
+	function imgSrc(n) {
+		return `${IMG_BASE}/${n}.landonteigening.webp`;
+	}
+
+	function getCalloutImages(section) {
+		return section.images.filter((n) => !NO_CALLOUT.has(n));
+	}
+
+	onMount(() => {
+		({ width: frameWidth, height: frameHeight } = computeFrameSize());
+		const onResize = () => { ({ width: frameWidth, height: frameHeight } = computeFrameSize()); };
+		
+		window.addEventListener("resize", onResize);
+
+		const scrollSectionEls = containerEl.querySelectorAll("[data-si]");
+
+		requestAnimationFrame(() => {
+			scrollSectionEls.forEach((el) => {
+				const si = parseInt(el.dataset.si);
+				const section = sections[si];
+				if (!section || section.type === "vertical") return;
+				const numImages = section.images.length;
+				el.style.height = `${numImages * 80}vh`;
+			});
+		});
+
+		const handleScroll = () => {
+			const headerEl = containerEl.querySelector(".header-section");
+			if (headerEl) {
+				const rect = headerEl.getBoundingClientRect();
+				const scrollable = headerEl.offsetHeight;
+				headerProgress = Math.max(0, Math.min(1, -rect.top / scrollable));
+			}
+
+			const footerEl = containerEl.querySelector(".footer-section");
+			if (footerEl) {
+				const rect = footerEl.getBoundingClientRect();
+				const scrollable = footerEl.offsetHeight;
+				footerProgress = Math.max(0, Math.min(1, -rect.top / scrollable));
+			}
+
+			scrollSectionEls.forEach((el) => {
+				const si = parseInt(el.dataset.si);
+				const section = sections[si];
+				if (!section || section.type === "vertical") return;
+
+				const rect = el.getBoundingClientRect();
+				const scrollable = el.offsetHeight - window.innerHeight;
+				if (scrollable <= 0) {
+					sectionProgress[si] = 0;
+					return;
+				}
+				const progress = Math.max(0, Math.min(1, -rect.top / scrollable));
+				sectionProgress[si] = progress;
+
+				const n = section.images.length;
+				let currentImageIdx;
+				if (section.type === "fade" && n > 1) {
+					const scaledProgress = progress * (n - 1);
+					const prevIdx = Math.floor(scaledProgress);
+					const blend = scaledProgress - prevIdx;
+					currentImageIdx = blend >= 0.5 ? Math.min(prevIdx + 1, n - 1) : prevIdx;
+				} else {
+					currentImageIdx = n <= 1 ? 0 : Math.min(Math.floor(progress * n), n - 1);
+				}
+				const activeImgNum = section.images[currentImageIdx];
+				activeCallouts[si] = NO_CALLOUT.has(activeImgNum) ? null : activeImgNum;
+			});
+			sectionProgress = { ...sectionProgress };
+			activeCallouts = { ...activeCallouts };
+		};
+
+		window.addEventListener("scroll", handleScroll, { passive: true });
+		handleScroll();
+
+		return () => {
+			window.removeEventListener("scroll", handleScroll);
+			window.removeEventListener("resize", onResize);
+		};
+	});
+
+	function getFadeProgress(section, progress) {
+		const n = section.images.length;
+		if (n <= 1) return { prevIdx: 0, nextIdx: 0, blend: 1 };
+		const scaledProgress = progress * (n - 1);
+		const prevIdx = Math.floor(scaledProgress);
+		const nextIdx = Math.min(prevIdx + 1, n - 1);
+		const blend = scaledProgress - prevIdx;
+		return { prevIdx, nextIdx, blend };
+	}
+
+	function getScrollIdx(section, progress) {
+		const n = section.images.length;
+		if (n <= 1) return 0;
+		return Math.min(Math.floor(progress * n), n - 1);
+	}
+
+	function observeVerticalImage(node, { imgNum }) {
+		if (NO_CALLOUT.has(imgNum)) return { destroy() {} };
+
+		const update = () => {
+			const rect = node.getBoundingClientRect();
+			const vh = window.innerHeight;
+			const center = rect.top + rect.height / 2;
+			const dist = Math.abs(center - vh / 2);
+			verticalActiveImg = { ...verticalActiveImg, [imgNum]: dist };
+		};
+
+		const observer = new IntersectionObserver(
+			() => { update(); },
+			{ threshold: Array.from({ length: 11 }, (_, i) => i / 10) }
+		);
+		observer.observe(node);
+
+		const onScroll = () => { update(); };
+		window.addEventListener("scroll", onScroll, { passive: true });
+		update();
+
+		return {
+			destroy() {
+				observer.disconnect();
+				window.removeEventListener("scroll", onScroll);
+			}
+		};
+	}
+
+	function getVerticalActiveCallout(section) {
+		let best = null;
+		let bestDist = Infinity;
+		for (const imgNum of section.images) {
+			if (NO_CALLOUT.has(imgNum)) continue;
+			const dist = verticalActiveImg[imgNum];
+			if (dist !== undefined && dist < bestDist) {
+				bestDist = dist;
+				best = imgNum;
+			}
+		}
+		return best;
+	}
+
+	function observeVerticalSection(node, { sectionIdx }) {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				verticalSectionVisible = { ...verticalSectionVisible, [sectionIdx]: entries[0].isIntersecting };
+			},
+			{ threshold: 0 }
+		);
+		observer.observe(node);
+		return { destroy() { observer.disconnect(); } };
+	}
+</script>
+
+<svelte:boundary onerror={(e) => console.error(e)}>
+	<div class="scrolly-container" bind:this={containerEl}>
+		<div class="static-background">
+			<img src="{IMG_BASE}/background.webp" alt="" />
+		</div>
+		{#each sections as section, sectionIdx}
+			{#if section.type === "header"}
+				<section class="header-section">
+					<div class="header-image-wrapper">
+						<img src={section.image} alt="" class="header-image" />
+					</div>
+					<div class="header-overlay" style="opacity:{1 - headerProgress * 2}; transform:translateY({headerProgress * 80}px);">
+						<h1>{section.title}</h1>
+						<p class="header-subtitle">{section.subtitle}</p>
+					</div>
+				</section>
+			{:else if section.type === "text"}
+				<section class="step full-bleed">
+					<div class="full-bleed-spacer"></div>	
+					<div class="full-bleed-text">
+						<p>{section.content}</p>
+					</div>
+					<div class="full-bleed-spacer"></div>	
+				</section>
+			{:else}
+				{@const si = sectionIdx}
+				{@const progress = sectionProgress[si] ?? 0}
+				{@const activeImgNum = activeCallouts[si]}
+
+				{#if section.type === "vertical"}
+					{@const activeImgNum = getVerticalActiveCallout(section)}
+					{@const isVisible = verticalSectionVisible[si] ?? false}
+					<section class="vertical-stack-section" data-si={si} use:observeVerticalSection={{ sectionIdx: si }}>
+						{#each section.images as imgNum, vi}
+							<div class="v-stack-item" use:observeVerticalImage={{ imgNum }}>
+								<img src={imgSrc(imgNum)} alt="" />
+							</div>
+						{/each}
+						{#if isVisible}
+							{@const vLayout = activeImgNum ? getCalloutLayout(activeImgNum) : null}
+							<div
+								class="v-sticky-callout"
+								class:v-non-center={vLayout && vLayout.position !== "center"}
+								style={calloutPositionStyle(vLayout)}
+							>
+								{#key activeImgNum}
+									{#if activeImgNum && calloutTexts[activeImgNum]}
+										<p
+											class:callout-text={true}
+											class:visible={true}
+											class:no-bg={vLayout?.background === "transparent"}
+											style={calloutAlignStyle(vLayout)}
+										>
+											{calloutTexts[activeImgNum]}
+										</p>
+									{:else}
+										<p class="callout-text">&nbsp;</p>
+									{/if}
+								{/key}
+							</div>
+						{/if}
+					</section>
+				{:else if section.type === "vertical-scroll"}
+					{@const n = section.images.length}
+					{@const step = frameHeight + GAP}
+					{@const currentIdx = getScrollIdx(section, progress)}
+					{@const trackImages = section.direction === "down" ? [...section.images].reverse() : section.images}
+					{@const trackIdx = section.direction === "down" ? n - 1 - currentIdx : currentIdx}
+					{@const ty = -trackIdx * step}
+					<section class="scrolly-section" data-si={si}>
+						<div class="section-sticky">
+							<div class="image-frame vs-scroll-wrapper">
+								<div class="vs-track" style="transform:translateY({ty}px);">
+									{#each trackImages as imgNum}
+										<img src={imgSrc(imgNum)} alt="" style="width:{frameWidth}px; height:{frameHeight}px;" />
+									{/each}
+								</div>
+								{#if activeImgNum && calloutTexts[activeImgNum]}
+									{@const layout = getCalloutLayout(activeImgNum)}
+									<div
+										class={calloutClasses(layout)}
+										style={calloutPositionStyle(layout)}
+									>
+										<p
+											class:callout-text={true}
+											class:visible={true}
+											class:no-bg={layout.background === "transparent"}
+											style={calloutAlignStyle(layout)}
+										>
+											{calloutTexts[activeImgNum]}
+										</p>
+									</div>
+								{/if}
+							</div>
+						</div>
+					</section>
+				{:else}
+				<section class="scrolly-section" data-si={si}>
+					<div class="section-sticky">
+
+						{#if section.type === "fade"}
+							{@const { prevIdx, nextIdx, blend } = getFadeProgress(section, progress)}
+							<div class="image-frame">
+								{#each section.images as imgNum, i}
+									{@const isPrev = i === prevIdx && prevIdx !== nextIdx}
+									{@const isNext = i === nextIdx && prevIdx !== nextIdx}
+									{@const isSolo = prevIdx === nextIdx && i === prevIdx}
+									<img
+										src={imgSrc(imgNum)}
+										alt=""
+										class="fade-img"
+										style="opacity:{isSolo ? 1 : isPrev ? 1 - blend : isNext ? blend : 0};"
+									/>
+								{/each}
+								{#if activeImgNum && calloutTexts[activeImgNum]}
+									{@const layout = getCalloutLayout(activeImgNum)}
+									<div
+										class={calloutClasses(layout)}
+										style={calloutPositionStyle(layout)}
+									>
+										<p
+											class:callout-text={true}
+											class:visible={true}
+											class:no-bg={layout.background === "transparent"}
+											style={calloutAlignStyle(layout)}
+										>
+											{calloutTexts[activeImgNum]}
+										</p>
+									</div>
+								{/if}
+							</div>
+
+						{:else if section.type === "horizontal"}
+							{@const currentIdx = getScrollIdx(section, progress)}
+							<div class="image-frame h-scroll-wrapper">
+								<div
+									class="h-track"
+									style="transform:translateX(-{currentIdx * (frameWidth + GAP)}px);"
+								>
+									{#each section.images as imgNum}
+										<img
+											src={imgSrc(imgNum)}
+											alt=""
+											style="width:{frameWidth}px; height:{frameHeight}px;"
+										/>
+									{/each}
+								</div>
+								{#if activeImgNum && calloutTexts[activeImgNum]}
+									{@const layout = getCalloutLayout(activeImgNum)}
+									<div
+										class={calloutClasses(layout)}
+										style={calloutPositionStyle(layout)}
+									>
+										<p
+											class:callout-text={true}
+											class:visible={true}
+											class:no-bg={layout.background === "transparent"}
+											style={calloutAlignStyle(layout)}
+										>
+											{calloutTexts[activeImgNum]}
+										</p>
+									</div>
+								{/if}
+							</div>
+						{/if}
+
+					</div>
+				</section>
+				{/if}
+			{/if}
+		{/each}
+		<footer class="footer-section">
+			<div class="footer-image-wrapper">
+				<img src="{IMG_BASE}/header.jpg" alt="" class="footer-image" maxWidth="50%" />
+			</div>
+			<div class="footer-overlay" style="opacity:{1 - footerProgress * 2}; transform:translateY({footerProgress * 80}px);">
+				<p class="footer-credits">Originally published by De Correspondent in 2017, I've translated this story and given it a dynamic, scrollytelling makeover in 2026. Research, writing and visual storytelling by [Author Name]</p>
+				<p class="footer-credits">&copy; {new Date().getFullYear()}</p>
+			</div>
+		</footer>
+	</div>
+</svelte:boundary>
+
+<style>
+	/* ─── GLOBAL ──────────────────────────────────────────────────── */
+	.static-background {
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	overflow: hidden;
+	}
+
+	.static-background img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+	}
+
+	.scrolly-container {
+		background: transparent;
+		min-height: 100vh;
+	}
+
+	/* ─── HEADER ──────────────────────────────────────────────────── */
+	.header-section {
+		position: relative;
+		width: 100%;
+		height: 100vh;
+		overflow: hidden;
+	}
+
+	.header-image-wrapper {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.header-image {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+	}
+
+	.header-overlay {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 2rem;
+		pointer-events: none;
+		transition: opacity 0.1s, transform 0.1s;
+	}
+
+	.header-overlay h1 {
+		color: white;
+		font-size: 2rem;
+		text-shadow: 0 2px 20px rgba(0, 0, 0, 0.7);
+		text-align: center;
+		margin-bottom: 1rem;
+	}
+
+	.header-subtitle {
+		color: rgba(255, 255, 255, 0.9);
+		font-size: 1rem;
+		text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
+		text-align: center;
+		max-width: 28rem;
+		line-height: 1.5;
+	}
+	/* ─── TEXT SECTION ─────────────────────────────────────────────── */
+	.step.full-bleed {
+		overflow: hidden;
+		background: transparent;
+		border-top: none;
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	.full-bleed-bg {
+		position: absolute;
+		inset: -20% 0;
+		z-index: 0;
+		overflow: hidden;
+		will-change: transform;
+	}
+
+	.full-bleed-text {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: left;
+		padding: 2rem 1rem;
+	}
+
+/*	.full-bleed-text h3 {
+		color: white;
+		text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+		margin-bottom: 1rem;
+	}
+
+	.full-bleed-bg img {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+	}
+
+	.full-bleed-text p {
+		color: rgba(255, 255, 255, 0.9);
+		text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+		max-width: 28rem;
+	}
+	*/
+	.full-bleed-spacer {
+		height: 30vh;
+	}
+
+	/* ─── VERTICAL NATURAL SCROLL ─────────────────────────────────── */
+	.vertical-stack-section {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10px;
+		background: transparent;
+	}
+
+	.v-sticky-callout {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		pointer-events: none;
+		z-index: 10;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.v-sticky-callout.v-non-center {
+		transform: none;
+	}
+
+	.v-stack-item {
+		position: relative;
+		width: 100%;
+		overflow: hidden;
+		aspect-ratio: 2400 / 1350;
+	}
+
+	.v-stack-item img {
+		width: 100%;
+		height: 100%;
+		flex-shrink: 0;
+		object-fit: contain;
+		object-position: center;
+	}
+	
+
+	/* ─── SCROLLJACKED SECTIONS (fade, horizontal, vertical-scroll) ─ */
+	.scrolly-section {
+		position: relative;
+	}
+
+	.section-sticky {
+		position: sticky;
+		top: 0;
+		height: 100vh;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		background: transparent;
+	}
+
+	.image-frame {
+		position: relative;
+		overflow: hidden;
+		width: 100%;
+		aspect-ratio: 2400 / 1350;
+	}
+
+	@media (max-width: 767px) {
+	.image-frame,
+	.v-stack-item {
+		aspect-ratio: 3 / 4;
+	}
+	}
+
+	@media (max-width: 767px) {
+	.fade-img,
+	.v-stack-item img,
+	.h-track img,
+	.vs-track img {
+		object-fit: cover;
+	}
+	}
+
+	/* ─── FADE ────────────────────────────────────────────────────── */
+	.fade-img {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		object-position: center;
+	}
+
+	/* ─── HORIZONTAL SCROLL ───────────────────────────────────────── */
+	.h-scroll-wrapper {
+		overflow: hidden;
+	}
+
+	.h-track {
+		display: flex;
+		height: 100%;
+		gap: 10px;
+		transition: transform 0.15s ease-out;
+		will-change: transform;
+	}
+
+	.h-track img {
+		flex-shrink: 0;
+		object-fit: contain;
+		object-position: center;
+	}
+
+	/* ─── VERTICAL SCROLL (scrolljacked) ──────────────────────────── */
+	.vs-scroll-wrapper {
+		overflow: hidden;
+	}
+
+	.vs-track {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10px;
+		transition: transform 0.15s ease-out;
+		will-change: transform;
+	}
+
+	.vs-track img {
+		flex-shrink: 0;
+		object-fit: contain;
+		object-position: center;
+	}
+
+	/* ─── CALLOUTS ────────────────────────────────────────────────── */
+	/* Default: centered over the image */
+	.callout-overlay-inner {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		pointer-events: none;
+		z-index: 2;
+	}
+
+	/* Override: non-centered positioning (driven by inline styles from presets) */
+	.callout-overlay-inner[class*="callout-pos-top-center"] {
+		align-items: flex-start;
+		justify-content: center;
+	}
+
+	.callout-overlay-inner[class*="callout-pos-top-left"] {
+		align-items: flex-start;
+		justify-content: flex-start;
+	}
+
+	.callout-overlay-inner[class*="callout-pos-top-right"] {
+		align-items: flex-start;
+		justify-content: flex-end;
+	}
+
+	.callout-overlay-inner[class*="callout-pos-bottom-center"] {
+		align-items: flex-end;
+		justify-content: center;
+	}
+
+	.callout-overlay-inner[class*="callout-pos-bottom-left"] {
+		align-items: flex-end;
+		justify-content: flex-start;
+	}
+
+	.callout-overlay-inner[class*="callout-pos-bottom-right"] {
+		align-items: flex-end;
+		justify-content: flex-end;
+	}
+
+	/* Default callout text style: semi-transparent background, centered */
+	.callout-text {
+		opacity: 0;
+		transform: translateY(8px);
+		transition: opacity 0.4s ease, transform 0.4s ease;
+		font-size: 1rem;
+		line-height: 1.5;
+		max-width: 80%;
+		text-align: center;
+		background: rgba(255, 255, 255, 0.3); /* Adjust callout bg transparency here */
+		padding: 0.75rem 1.25rem;
+		border-radius: 4px;
+	}
+
+	/* Override: no background (configured in calloutLayouts) */
+	.callout-text.no-bg {
+		background: transparent;
+		padding: 0;
+		border-radius: 0;
+	}
+
+	.callout-text.visible {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	/* ─── FOOTER ──────────────────────────────────────────────────── */
+	.footer-section {
+		position: relative;
+		width: 100%;
+		height: 100vh;
+		overflow: hidden;
+	}
+
+	.footer-image-wrapper {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.footer-image {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+	}
+
+	.footer-overlay {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 2rem;
+		pointer-events: none;
+		transition: opacity 0.1s, transform 0.1s;
+	}
+
+	.footer-credits {
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 0.75rem;
+	text-shadow: 0 1px 10px rgba(0, 0, 0, 1);
+	text-align: center;
+	line-height: 1.8;
+	maxWidth: 50%;
+	margin: 0;
+
+	background: rgba(1, 1, 1, 0.1);
+	box-shadow: 0 0 20px 20px rgba(1, 0, 0, 0.1);
+}
+
+	/* ─── RESPONSIVE ──────────────────────────────────────────────── */
+	@media (min-width: 768px) {
+		.header-overlay h1 {
+			font-size: 3rem;
+		}
+
+		.header-subtitle {
+			font-size: 1.15rem;
+			max-width: 36rem;
+		}
+
+		.callout-text {
+			font-size: 1.1rem;
+			max-width: 24rem;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.header-overlay h1 {
+			font-size: 3.5rem;
+		}
+
+		.header-subtitle {
+			font-size: 1.25rem;
+			max-width: 40rem;
+		}
+
+		.callout-text {
+			max-width: 28rem;
+		}
+	}
+</style>

@@ -1,0 +1,1242 @@
+<script>
+	import { onMount } from "svelte";
+	import { fade } from "svelte/transition";
+
+	// ─── CONFIGURATION ───────────────────────────────────────────────
+	// Image base path (relative to /static)
+	const IMG_BASE = "images/landonteigening";
+
+	// Images that should NOT show a callout
+	// Add or remove image numbers here
+	const NO_CALLOUT = new Set([1, 4, 5, 6, 7, 8, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 51, 54, 55, 56, 57, 58, 59, 60, 64]);
+
+	// Images that must be shown in FULL, never cropped — e.g. alpha/graphic
+	// overlays whose content isn't centered or full-bleed. These use
+	// object-fit: contain instead of cover, on both desktop and mobile.
+	// Add image numbers here as needed.
+	const CONTAIN_IMAGES = new Set([]);
+
+	// Gap between images in scroll tracks (px)
+	const GAP = 0;
+	const FADE_HOLD = 0.3;
+	const HOLD_AFTER = { 4: 0.55 };		// Extra hold AFTER a specific image, before it fades to the next one.
+
+		// ─── TYPED TEXT ON CURVES ────────────────────────────────────────
+	// Text that is "typed out" along SVG paths while you scroll.
+	// The paths come from lines.svg (copied in, because <textPath> needs
+	// the path to be in the same document as the text).
+
+	const TYPED_IMAGE = 4; // the image number this effect belongs to
+
+	// ⚠️ Must match the viewBox of lines.svg (= pixel size of 4.landonteigening.webp)
+	const TYPED_VB_W = 2400; // 👈 replace with your width
+	const TYPED_VB_H = 1350; // 👈 replace with your height
+
+	// When typing starts/ends, measured in "image steps" of the fade.
+	// 0 = image 4 fully visible. -0.5 = halfway through fading in.
+	// +0.25 = a quarter of the way through fading out.
+	const TYPED_START = -0.3;
+	const TYPED_END = 0.1;
+
+	// One entry per curve. Lines are typed in this order (line1 first, then line2).
+	const TYPED_LINES = [
+		{ id: "line1", text: "I don’t see the animals all straightaway", d: "M437.41,118.71s179.59-16.33,281.63,85.71c116.33,104.08,227.65,125.49,331.73,125.49,132.65,14.29,225.41,111.24,247.86,131.65,22.45,20.41,102.04,73.47,265.31,61.22,83.67,1.81,167.35,34.69,236.73,91.84,69.39,40.82,153.06,36.73,185.71,32.65" },
+		{ id: "line2", text: "but I can smell them", d: "M214.96,471.77s51.02,40.82,224.49,22.45c116.33-2.04,224.49,112.24,224.49,112.24,0,0,91.84,93.88,224.49,100,132.65-4.08,227.22,34.69,311.57,116.33,80.27,59.18,182.31,77.55,259.86,61.22,65.31-2.04,155.1,8.16,263.27,110.2,85.71,75.51,165.31,108.16,263.27,95.92" }
+	];
+
+	// ─── CALLOUT TEXTS ───────────────────────────────────────────────
+	// Each key = image number, value = callout text string.
+	// To add a callout: add the image number as key and your text as value.
+	// To remove a callout: either delete the entry OR add the image number to NO_CALLOUT.
+	// To customize a callout's position/style: see "CALLOUT LAYOUTS" below.
+	const calloutTexts = {
+		1: "Callout for image 1",
+		2: "When I’m six years old, I meet my grandmother for the very first time. She grew up on a farm and still lives there. To get to her home, we first take a taxi until the gravel roads starts. A bicycle taxi drops us off at her home.",
+		3: "It’s my first time in China, and I’m not used to the rural life here. The toilet is outside and farm animals are scattered around her house.",
+		4: "Callout for image 4",
+		5: "Callout for image 5",
+		6: "Callout for image 6",
+		7: "Callout for image 7",
+		8: "Callout for image 8",
+		9: "Callout for image 9",
+		10: "Callout for image 10",
+		12: "I visit my grandma again several years later. Soon the vegetable garden won’t be there anymore.",
+		13: "Local authorities have allocated another destination for the land.",
+		14: "A gas station.",
+		15: "Callout for image 15",
+		16: "Callout for image 16",
+		17: "Callout for image 17",
+		18: "Callout for image 18",
+		19: "Callout for image 19",
+		20: "Callout for image 20",
+		21: "Callout for image 21",
+		22: "Callout for image 22",
+		23: "Callout for image 23",
+		24: "Callout for image 24",
+		26: "In my following visits, I notice the vegetable garden shrinking.",
+		27: "Callout for image 27",
+		28: "Callout for image 28",
+		29: "I wonder if she feels safe to share her real thoughts. Even in a safe environment I can’t seem to wiggle out  a critical note.",
+		30: "Callout for image 30",
+		31: "Callout for image 31",
+		32: "Callout for image 32",
+		33: "Callout for image 33",
+		34: "Callout for image 34",
+		35: "Callout for image 35",
+		36: "Callout for image 36",
+		38: "Callout for image 38",
+		39: "I was hoping to hear what she actually thought, how her old home was better than her new one. How can this block of concrete be better than that big vegetable garden?",
+		40: "Callout for image 40",
+		41: "Callout for image 41",
+		42: "Callout for image 42",
+		43: "Callout for image 43",
+		44: "Callout for image 44",
+		45: "Callout for image 45",
+		46: "Callout for image 46",
+		47: "Callout for image 47",
+		48: "Callout for image 48",
+		49: "Callout for image 49",
+		50: "Callout for image 50",
+		52: "More than twenty years later, I walk along a crispy clean road looking for the place my grandmothers house used to be. ",
+		53: "It’s hard to imagine a farmers life once took place here.",
+		55: "Callout for image 55",
+		56: "Callout for image 56",
+		57: "Callout for image 57",
+		58: "Callout for image 58",
+		59: "Callout for image 59",
+		61: "The more I looked into it, the more I realised it wasn’t always about politics. I saw these protests against land grabs as a cry for more democracy and against the communist regime. In the same way I politicized my grandma’s whole experience. I was looking for her political opinion, which I assumed was there and had to be critical.",
+		62: "But it wasn’t fear that kept her from sharing her thoughts on her forced eviction. She didn’t share her political opinion because there just wasn’t any.",
+		63: "Leaving her home didn’t have a political meaning.",
+		64: "Callout for image 64"
+	};
+
+	// ─── CALLOUT LAYOUTS ─────────────────────────────────────────────
+	// Per-image callout positioning and styling overrides.
+	// Define reusable layout presets, then assign images to them.
+	// Each preset can have: position, background, textAlign, paddingTop, paddingLeft
+	const CALLOUT_PRESETS = {
+		topLeft: { position: "top-left", background: "transparent", textAlign: "left", paddingTop: 100, paddingLeft: 50, maxWidth: 40 },
+		topRight: { position: "top-right", background: "transparent", textAlign: "right", paddingTop: 20, paddingLeft: 50, maxWidth: 50 },
+		centered: { position: "top-center", background: "transparent", textAlign: "center", paddingTop: 20, paddingLeft: 0},
+		centeredLower: { position: "top-center", background: "transparent", textAlign: "center", paddingTop: 80, paddingLeft: 0},
+		centeredBottom: { position: "bottom-center", background: "transparent", textAlign: "center", paddingBottom: 50, paddingLeft: 0},
+		bottomCenter: { position: "bottom-center", background: "transparent", textAlign: "center", paddingBottom: 100, paddingLeft: 0},		// Add your own presets here:
+		// bottomRight: { position: "bottom-right", background: "transparent", textAlign: "right", paddingTop: 0, paddingLeft: 0 },
+	};
+
+	// Map image numbers to a preset name.
+	// Images NOT listed here default to "centered".
+	// Multiple images can share the same preset — no need to copy-paste.
+	const calloutLayoutMap = {
+		2: "topLeft",
+		12: "centeredLower",
+		13: "centeredLower",
+		14: "centeredLower",
+		26: "bottomCenter",
+		29: "bottomCenter",
+		39: "centeredBottom",
+		52: "centeredBottom",
+		53: "centeredBottom",
+		61: "centered",
+		62: "centered",
+		63: "centered",
+		// 5: "topLeft",   ← uncomment to make image 26 same as image 1
+	};
+
+	function getCalloutLayout(imgNum) {
+		const presetName = calloutLayoutMap[imgNum] || "centered";
+		return CALLOUT_PRESETS[presetName] || CALLOUT_PRESETS.centered;
+	}
+
+	function calloutPositionStyle(layout) {
+		if (!layout || layout.position === "center") return "";
+		const s = [];
+		if (layout.position.includes("top")) s.push(`top:${layout.paddingTop ?? 0}px;`);
+		if (layout.position.includes("bottom")) s.push(`bottom:${layout.paddingBottom ?? layout.paddingTop ?? 0}px;`);
+		if (layout.position.includes("left")) s.push(`left:${layout.paddingLeft ?? 0}px;`);
+		if (layout.position.includes("right")) s.push(`right:${layout.paddingRight ?? layout.paddingLeft ?? 0}px;`);
+		return s.join("");
+	}
+
+	function calloutAlignStyle(layout) {
+		if (!layout) return "";
+		const parts = [`text-align:${layout.textAlign ?? "center"};`];
+		if (layout.maxWidth) parts.push(`max-width:${layout.maxWidth}%;`);
+		return parts.join("");
+	}
+
+	function calloutClasses(layout) {
+		if (!layout || layout.position === "center") return "callout-overlay-inner";
+		return `callout-overlay-inner callout-pos-${layout.position}`;
+	}
+
+	// Returns "fit-contain" for images that must never be cropped
+	// (see CONTAIN_IMAGES above), otherwise "" (defaults to cover).
+	function imgFitClass(n) {
+		return CONTAIN_IMAGES.has(n) ? "fit-contain" : "";
+	}
+
+	// ─── SECTIONS ────────────────────────────────────────────────────
+	// Define the scrollytelling sequence here.
+	// Types:
+	//   "header"         — full-viewport cover image with title/subtitle
+	//   "fade"           — images crossfade into each other (scrolljacked)
+	//   "horizontal"     — images slide horizontally (scrolljacked)
+	//   "vertical"       — images stacked naturally, you scroll through them
+	//   "vertical-scroll"— images scroll vertically (scrolljacked, direction "up" or "down")
+	//
+	// Boundary images: if image N is the last in one section and first in the next,
+	// it appears in both — creating a visual bridge between sections.
+	const sections = [
+		{ type: "header", title: "Land appropriation", subtitle: "My grandmother lost her land little by little because to the local government. Her response was not what I thought it would be.", image: `${IMG_BASE}/header.webp` },
+		{ type: "fade", images: [2, 3, 4, 5] },
+		{ type: "text", content: "The land she farms on is not hers. In China, land in urban areas is state owned but private individuals and companies can hold users rights. In rural areas like where my grandmother lives, land belongs to the community: it’s collectively owned. But it’s not clearly defined who this collective is, not even in law. In practise local authorities claim the land." },
+		/*{ type: "horizontal", images: [6, 7, 8, 9, 10, 11] },*/
+		{ type: "fade", images: [12, 13, 14, 15] },
+		{ type: "text", content: "Local authorities claim land to modernise rural areas, but there are financial reasons too. Between 2004 and 2006 agricultural tax was abolished, which left a big budgeting gap. Leasing land to property developers generates more revenue than leasing it to farmers. Nowadays, this generates nearly half of local government income. That is why land appropriation occurs everywhere in China." },
+		/*{ type: "horizontal", images: [16, 17, 18, 19, 20, 21, 22, 23, 24, 25] },*/
+		{ type: "vertical", images: [26, 27, 28, 29] },
+		{ type: "text", content: "Back in 2011 heavy protests against land grabs took place in another village in the south of China. Villagers in Wukan claimed not to be adequately compensated. The protests led to the first election in 42 years to form a new village commitee. My grandmother and the villagers of Wukan are not the only ones who had to leave the land they lived on. Tens of millions of peasants have had their land appropriated by local governments. In the running up to the Olympic Games in Beijing in 2008, 1.5 million people had to leave their homes. To build the Three Gorges Dam 1.3 million people were forced to move."},
+		/*{ type: "horizontal", images: [30, 31, 32, 33, 34, 35, 36, 37] },*/
+		{ type: "fade", images: [38, 39, 40, 41, 42, 43] },
+		{ type: "text", content: "In Wukan, the villagers didn’t get what my grandmother did get: an adequate compensation. By law, the compensation consist of three parts: a compensation for relocation, payouts for lost fixtures and standing  crops and a compensation or replacement of lost land. Nevertheless, this practice is often deviated from, and protests frequently center around this issue. Regional differences can be significant, as essentially local authorities themselves determine how much compensation they are willing to provide." },
+		/*{ type: "horizontal", images: [44, 45, 46, 47, 48, 49, 50, 51] },*/
+		// PAN SECTION: one extra-wide image (old 52 + 53 stitched together).
+		// The image is shown full height, aligned to the left, then slides left
+		// as you scroll so the right half ("image 53") comes into view.
+		{
+			type: "pan",
+			image: 52,               // the file to display: 52.landonteigening.webp (now double width)
+			callouts: [52, 53],      // callout shown first, callout shown after the pan passes switchAt
+			panStartOffset: 0.25,    // the screen's left edge starts 25% into the image (0 = far left, 0.5 = halfway)
+			panStart: 0.15,          // scroll progress (0–1) at which panning starts (0.15 = hold still for the first 15%)
+			panEnd: 0.9,             // scroll progress at which panning ends (image rests on its right edge)
+			switchAt: 0.5,           // pan progress (0–1) at which callout 53 replaces callout 52
+			scrollVh: 500            // total section height in vh; bigger = slower pan
+		},
+		{ type: "text", content: "Over 60 percent of all demonstrations in China are related to land appropriation. Sometimes protesters succeed in bringing down corrupt authorities, such as in Wukan where the sitting local government left and another leader, Lin Zuluan, was elected. It was a democratic experiment, as Lin was the first elected village leader there since 42 years. Years later he was convicted for corruption charges, though his supporters say his confession to bribery was forced. Unlike in Wukan, not all of these demonstrations are about politics. Protesters often just want their land back or a reasonable compensation. They want to get what’s fair." },
+		/*{ type: "horizontal", images: [55, 56, 57, 58, 59, 60] },*/
+		{ type: "fade", images: [61, 62, 63, 64] }
+	];
+
+	// ─── RUNTIME STATE ───────────────────────────────────────────────
+	
+	// Rendered width (px) of the wide pan image. Filled automatically by bind:clientWidth.
+	// Used to calculate how far the image has to slide. (One pan section = one variable.)
+	let panImgWidth = $state(0);
+
+	let activeCallouts = $state({});
+	let sectionProgress = $state({});
+	let verticalActiveImg = $state({});
+	let verticalSectionVisible = $state({});
+	let containerEl;
+	let headerProgress = $state(0);
+	let footerProgress = $state(0);
+	let bgGreyProgress = $state(0);
+
+	const MOBILE_ASPECT = 3 / 4;       // narrower than native → image scales to fill height, sides get cropped
+	const MOBILE_BREAKPOINT = 767;
+
+	let frameWidth  = $state(0);
+	let frameHeight = $state(0);
+
+	function computeFrameSize() {
+		const w = window.innerWidth;
+		const h = window.innerHeight;
+		// Frame matches viewport. Images use object-fit: cover,
+		// so they scale to fill height and crop the sides horizontally.
+		return { width: w, height: h };
+	}
+
+	function imgSrc(n) {
+		return `${IMG_BASE}/${n}.landonteigening.webp`;
+	}
+
+	function getCalloutImages(section) {
+		return section.images.filter((n) => !NO_CALLOUT.has(n));
+	}
+
+	onMount(() => {
+		({ width: frameWidth, height: frameHeight } = computeFrameSize());
+		const onResize = () => { ({ width: frameWidth, height: frameHeight } = computeFrameSize()); };
+		
+		window.addEventListener("resize", onResize);
+
+		const scrollSectionEls = containerEl.querySelectorAll("[data-si]");
+
+		requestAnimationFrame(() => {
+			scrollSectionEls.forEach((el) => {
+				const si = parseInt(el.dataset.si);
+				const section = sections[si];
+				if (!section || section.type === "vertical") return;
+				// Pan sections have no `images` array, so they use their own height setting.
+				// Height = how long you scroll while the image is pinned to the screen.
+				if (section.type === "pan") {
+					el.style.height = `${section.scrollVh ?? 300}vh`;
+					return;
+				}
+				const numImages = section.images.length;
+				el.style.height = `${numImages * 100}vh`;
+			});
+		});
+
+		const handleScroll = () => {
+			const headerEl = containerEl.querySelector(".header-section");
+			if (headerEl) {
+				const rect = headerEl.getBoundingClientRect();
+				const scrollable = headerEl.offsetHeight;
+				headerProgress = Math.max(0, Math.min(1, -rect.top / scrollable));
+			}
+
+			const footerEl = containerEl.querySelector(".footer-section");
+			if (footerEl) {
+				const rect = footerEl.getBoundingClientRect();
+				const scrollable = footerEl.offsetHeight;
+				footerProgress = Math.max(0, Math.min(1, -rect.top / scrollable));
+			}
+
+			const verticalEl = containerEl.querySelector(".vertical-stack-section");
+			if (verticalEl) {
+				const nextTextEl = verticalEl.nextElementSibling;
+				if (nextTextEl && nextTextEl.classList.contains("step")) {
+					const rect = nextTextEl.getBoundingClientRect();
+					const vh = window.innerHeight;
+					const startTop = vh;
+					const endTop = 0;
+					const range = startTop - endTop;
+					bgGreyProgress = Math.max(0, Math.min(1, (startTop - rect.top) / range));
+				}
+			}
+
+			scrollSectionEls.forEach((el) => {
+				const si = parseInt(el.dataset.si);
+				const section = sections[si];
+				if (!section || section.type === "vertical") return;
+
+				const rect = el.getBoundingClientRect();
+				const scrollable = el.offsetHeight - window.innerHeight;
+				if (scrollable <= 0) {
+					sectionProgress[si] = 0;
+					return;
+				}
+				const progress = Math.max(0, Math.min(1, -rect.top / scrollable));
+				sectionProgress[si] = progress;
+
+				// PAN SECTION: choose which callout to show based on how far the image has panned.
+				// Before switchAt → first callout (52). After → second callout (53).
+				if (section.type === "pan") {
+					const panP = getPanProgress(section, progress);
+					const activeImgNum = panP >= (section.switchAt ?? 0.5) ? section.callouts[1] : section.callouts[0];
+					activeCallouts[si] = NO_CALLOUT.has(activeImgNum) ? null : activeImgNum;
+					return; // skip the fade/horizontal logic below, it doesn't apply to pan
+				}
+
+				const n = section.images.length;
+				let currentImageIdx;
+				if (section.type === "fade" && n > 1) {
+					const { prevIdx, nextIdx, blend } = getFadeProgress(section, progress);
+					currentImageIdx = blend >= 0.5 ? nextIdx : prevIdx;
+				} else {
+					currentImageIdx = n <= 1 ? 0 : Math.min(Math.floor(progress * n), n - 1);
+				}
+				const activeImgNum = section.images[currentImageIdx];
+				activeCallouts[si] = NO_CALLOUT.has(activeImgNum) ? null : activeImgNum;
+			});
+			sectionProgress = { ...sectionProgress };
+			activeCallouts = { ...activeCallouts };
+		};
+
+		window.addEventListener("scroll", handleScroll, { passive: true });
+		handleScroll();
+
+		return () => {
+			window.removeEventListener("scroll", handleScroll);
+			window.removeEventListener("resize", onResize);
+		};
+	});
+
+	function getFadeProgress(section, progress) {
+		const n = section.images.length;
+		if (n <= 1) return { prevIdx: 0, nextIdx: 0, blend: 1 };
+		const scaledProgress = progress * (n - 1);
+		const prevIdx = Math.floor(scaledProgress);
+		const nextIdx = Math.min(prevIdx + 1, n - 1);
+		const raw = scaledProgress - prevIdx;
+
+		// Hold after the current image (custom per image), hold before the next one (default)
+		const lo = HOLD_AFTER[section.images[prevIdx]] ?? FADE_HOLD / 2;
+		const hi = Math.max(lo + 0.05, 1 - FADE_HOLD / 2);
+		const blend = Math.max(0, Math.min(1, (raw - lo) / (hi - lo)));
+
+		return { prevIdx, nextIdx, blend };
+	}
+
+	const clamp01 = (x) => Math.max(0, Math.min(1, x));
+
+	// Opacity of image number `i` (index in section.images) during the fade.
+	// Same logic as the fade template, so the text fades together with image 4.
+	function getImageOpacity(section, progress, i) {
+		const { prevIdx, nextIdx, blend } = getFadeProgress(section, progress);
+		if (prevIdx === nextIdx) return i === prevIdx ? 1 : 0;
+		if (i === prevIdx) return 1 - blend;
+		if (i === nextIdx) return blend;
+		return 0;
+	}
+
+	// t = typing progress (0–1) and opacity for the typed text.
+	function getTypedState(section, progress) {
+		const idx = section.images.indexOf(TYPED_IMAGE);
+		const scaled = progress * (section.images.length - 1); // same scale the fade uses
+		const t = clamp01((scaled - (idx + TYPED_START)) / (TYPED_END - TYPED_START));
+		return { t, opacity: getImageOpacity(section, progress, idx) };
+	}
+
+	// The part of line `lineIdx` that should be visible at typing progress t.
+	// Lines are typed one after the other: all of line1, then line2.
+	function typedSlice(t, lineIdx) {
+		const total = TYPED_LINES.reduce((sum, l) => sum + l.text.length, 0);
+		let chars = Math.floor(t * total); // characters revealed so far, across both lines
+		for (let i = 0; i < lineIdx; i++) chars -= TYPED_LINES[i].text.length;
+		chars = Math.max(0, Math.min(TYPED_LINES[lineIdx].text.length, chars));
+		return TYPED_LINES[lineIdx].text.slice(0, chars);
+	}
+
+	// Same idea as typedSlice, but returns BOTH parts of the line:
+	// `shown`  = characters already typed (drawn normally)
+	// `hidden` = characters still to come (drawn fully transparent)
+	// Keeping the full text in the layout is what keeps it centered and stable.
+	function typedSplit(t, lineIdx) {
+		const shown = typedSlice(t, lineIdx);
+		return { shown, hidden: TYPED_LINES[lineIdx].text.slice(shown.length) };
+	}
+
+	// Converts the section's overall scroll progress (0–1) into pan progress (0–1).
+	// 0 = image still at the left edge, 1 = image fully panned to its right edge.
+	// Progress before panStart stays 0 (a "hold"), and after panEnd stays 1.
+	function getPanProgress(section, progress) {
+		const start = section.panStart ?? 0;
+		const end = section.panEnd ?? 1;
+		return Math.max(0, Math.min(1, (progress - start) / (end - start)));
+	}
+
+	function getScrollIdx(section, progress) {
+		const n = section.images.length;
+		if (n <= 1) return 0;
+		return Math.min(Math.floor(progress * n), n - 1);
+	}
+
+	function observeVerticalImage(node, { imgNum }) {
+		if (NO_CALLOUT.has(imgNum)) return { destroy() {} };
+
+		const update = () => {
+			const rect = node.getBoundingClientRect();
+			const vh = window.innerHeight;
+			const center = rect.top + rect.height / 2;
+			const dist = Math.abs(center - vh / 2);
+			const inView = rect.top <= vh / 2 && rect.bottom >= vh / 2;
+			verticalActiveImg = { ...verticalActiveImg, [imgNum]: { dist, inView } };
+		};
+
+		const observer = new IntersectionObserver(
+			() => { update(); },
+			{ threshold: Array.from({ length: 11 }, (_, i) => i / 10) }
+		);
+		observer.observe(node);
+
+		const onScroll = () => { update(); };
+		window.addEventListener("scroll", onScroll, { passive: true });
+		update();
+
+		return {
+			destroy() {
+				observer.disconnect();
+				window.removeEventListener("scroll", onScroll);
+			}
+		};
+	}
+
+	function getVerticalActiveCallout(section) {
+		let best = null;
+		let bestDist = Infinity;
+		for (const imgNum of section.images) {
+			if (NO_CALLOUT.has(imgNum)) continue;
+			const entry = verticalActiveImg[imgNum];
+			if (!entry || !entry.inView) continue;
+			if (entry.dist < bestDist) {
+				bestDist = entry.dist;
+				best = imgNum;
+			}
+		}
+		return best;
+	}
+
+	function observeVerticalSection(node, { sectionIdx }) {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				verticalSectionVisible = { ...verticalSectionVisible, [sectionIdx]: entries[0].isIntersecting };
+			},
+			{ threshold: 0 }
+		);
+		observer.observe(node);
+		return { destroy() { observer.disconnect(); } };
+	}
+</script>
+
+<svelte:boundary onerror={(e) => console.error(e)}>
+	<div class="scrolly-container" bind:this={containerEl}>
+		<div class="static-background">
+			<img src="{IMG_BASE}/background.webp" alt="" />
+			<img src="{IMG_BASE}/background.webp" alt="" class="bg-grey" style="opacity:{bgGreyProgress};" />
+		</div>
+		{#each sections as section, sectionIdx}
+			{#if section.type === "header"}
+				<section class="header-section">
+					<div class="header-image-wrapper">
+						<img src={section.image} alt="" class="header-image" />
+					</div>
+					<div class="header-overlay" style="opacity:{1 - headerProgress * 2}; transform:translateY({headerProgress * 80}px);">
+						<h1>{section.title}</h1>
+						<p class="header-subtitle">{section.subtitle}</p>
+					</div>
+				</section>
+			{:else if section.type === "text"}
+				<section class="step full-bleed">
+					<div class="full-bleed-spacer"></div>	
+					<div class="full-bleed-text">
+						<p>{section.content}</p>
+					</div>
+					<div class="full-bleed-spacer"></div>	
+				</section>
+			{:else}
+				{@const si = sectionIdx}
+				{@const progress = sectionProgress[si] ?? 0}
+				{@const activeImgNum = activeCallouts[si]}
+
+				{#if section.type === "vertical"}
+					{@const activeImgNum = getVerticalActiveCallout(section)}
+					{@const isVisible = verticalSectionVisible[si] ?? false}
+					<section class="vertical-stack-section" data-si={si} use:observeVerticalSection={{ sectionIdx: si }}>
+						{#each section.images as imgNum, vi}
+							<div class="v-stack-item" use:observeVerticalImage={{ imgNum }}>
+								<img src={imgSrc(imgNum)} alt="" class={imgFitClass(imgNum)} />
+							</div>
+						{/each}
+						{#if isVisible}
+							{@const vLayout = activeImgNum ? getCalloutLayout(activeImgNum) : null}
+							<div
+								class="v-sticky-callout {vLayout ? `callout-pos-${vLayout.position}` : ''}"
+								class:v-non-center={vLayout && vLayout.position !== "center"}
+								style={calloutPositionStyle(vLayout)}
+							>
+								{#key activeImgNum}
+									{#if activeImgNum && calloutTexts[activeImgNum]}
+										<p
+											class:callout-text={true}
+											class:visible={true}
+											class:no-bg={vLayout?.background === "transparent"}
+											style={calloutAlignStyle(vLayout)}
+										>
+											{calloutTexts[activeImgNum]}
+										</p>
+									{:else}
+										<p class="callout-text">&nbsp;</p>
+									{/if}
+								{/key}
+							</div>
+						{/if}
+					</section>
+				{:else if section.type === "vertical-scroll"}
+					{@const n = section.images.length}
+					{@const step = frameHeight + GAP}
+					{@const currentIdx = getScrollIdx(section, progress)}
+					{@const trackImages = section.direction === "down" ? [...section.images].reverse() : section.images}
+					{@const trackIdx = section.direction === "down" ? n - 1 - currentIdx : currentIdx}
+					{@const ty = -trackIdx * step}
+					<section class="scrolly-section" data-si={si}>
+						<div class="section-sticky">
+							<div class="image-frame vs-scroll-wrapper">
+								<div class="vs-track" style="transform:translateY({ty}px);">
+									{#each trackImages as imgNum}
+										<img src={imgSrc(imgNum)} alt="" class={imgFitClass(imgNum)} style="width:{frameWidth}px; height:{frameHeight}px;" />
+									{/each}
+								</div>
+																{#key activeImgNum}
+									{#if activeImgNum && calloutTexts[activeImgNum]}
+										{@const layout = getCalloutLayout(activeImgNum)}
+										<div
+											class={calloutClasses(layout)}
+											style={calloutPositionStyle(layout)}
+										>
+											<p
+												class="callout-text visible"
+												class:no-bg={layout.background === "transparent"}
+												style={calloutAlignStyle(layout)}
+												transition:fade={{ duration: 1000 }}
+											>
+												{calloutTexts[activeImgNum]}
+											</p>
+										</div>
+									{/if}
+								{/key}
+							</div>
+						</div>
+					</section>
+				{:else}
+				<section class="scrolly-section" data-si={si}>
+					<div class="section-sticky">
+
+						{#if section.type === "fade"}
+							{@const { prevIdx, nextIdx, blend } = getFadeProgress(section, progress)}
+							<div class="image-frame">
+								{#each section.images as imgNum, i}
+									{@const isPrev = i === prevIdx && prevIdx !== nextIdx}
+									{@const isNext = i === nextIdx && prevIdx !== nextIdx}
+									{@const isSolo = prevIdx === nextIdx && i === prevIdx}
+									<img
+										src={imgSrc(imgNum)}
+										alt=""
+										class="fade-img {imgFitClass(imgNum)}"
+										style="opacity:{isSolo ? 1 : isPrev ? 1 - blend : isNext ? blend : 0};"
+									/>
+								{/each}
+
+								<!-- TYPED TEXT ON THE CURVES: only rendered in the fade section that contains image 4 -->
+								{#if section.images.includes(TYPED_IMAGE)}
+									{@const typed = getTypedState(section, progress)}
+									<svg
+										class="typed-svg"
+										viewBox="0 0 {TYPED_VB_W} {TYPED_VB_H}"
+										preserveAspectRatio="xMidYMid slice"
+										style="opacity:{typed.opacity};"
+										role="img"
+										aria-label={TYPED_LINES.map((l) => l.text).join(" ")}
+									>
+										<!-- The invisible guide paths (fill none, no stroke = never drawn) -->
+										<defs>
+											{#each TYPED_LINES as line}
+												<path id={line.id} d={line.d} fill="none" />
+											{/each}
+										</defs>
+										<!-- One <text> per curve; only the first N characters are rendered -->
+										{#each TYPED_LINES as line, li}
+											{@const part = typedSplit(typed.t, li)}
+											<text class="typed-text" dy="0.35em">
+												<!-- startOffset="50%" puts the middle of the text at the middle of the path.
+													Keep the tspans on ONE line: extra whitespace would shift the centering. -->
+												<textPath href="#{line.id}" startOffset="50%"><tspan>{part.shown}</tspan><tspan fill-opacity="0">{part.hidden}</tspan></textPath>
+											</text>
+										{/each}
+									</svg>
+								{/if}
+
+								{#key activeImgNum}
+									{#if activeImgNum && calloutTexts[activeImgNum]}
+										{@const layout = getCalloutLayout(activeImgNum)}
+										<div
+											class={calloutClasses(layout)}
+											style={calloutPositionStyle(layout)}
+										>
+											<p
+												class="callout-text visible"
+												class:no-bg={layout.background === "transparent"}
+												style={calloutAlignStyle(layout)}
+												transition:fade={{ duration: 1000 }}
+											>
+												{calloutTexts[activeImgNum]}
+											</p>
+										</div>
+									{/if}
+								{/key}
+							</div>
+
+						{:else if section.type === "horizontal"}
+							{@const currentIdx = getScrollIdx(section, progress)}
+							<div class="image-frame h-scroll-wrapper">
+								<div
+									class="h-track"
+									style="transform:translateX(-{currentIdx * (frameWidth + GAP)}px);"
+								>
+									{#each section.images as imgNum}
+										<img
+											src={imgSrc(imgNum)}
+											alt=""
+											class={imgFitClass(imgNum)}
+											style="width:{frameWidth}px; height:{frameHeight}px;"
+										/>
+									{/each}
+								</div>
+																{#key activeImgNum}
+									{#if activeImgNum && calloutTexts[activeImgNum]}
+										{@const layout = getCalloutLayout(activeImgNum)}
+										<div
+											class={calloutClasses(layout)}
+											style={calloutPositionStyle(layout)}
+										>
+											<p
+												class="callout-text visible"
+												class:no-bg={layout.background === "transparent"}
+												style={calloutAlignStyle(layout)}
+												transition:fade={{ duration: 1000 }}
+											>
+												{calloutTexts[activeImgNum]}
+											</p>
+										</div>
+									{/if}
+								{/key}
+							</div>
+													{:else if section.type === "pan"}
+							<!-- How far (0–1) the image has slid to the left -->
+							{@const panP = getPanProgress(section, progress)}
+							<!-- Total distance the image can slide = image width minus screen width -->
+							{@const maxShift = Math.max(0, panImgWidth - frameWidth)}
+							<!-- Where the pan begins: 25% of the image width, but never further than maxShift, so no empty space appears on the right -->
+							{@const startShift = Math.min(maxShift, panImgWidth * (section.panStartOffset ?? 0))}
+							<!-- Current position: begins at startShift and ends at maxShift (the right edge of the image) -->
+							{@const currentShift = startShift + panP * (maxShift - startShift)}
+							<div class="image-frame">
+								<!-- Track moves left as you scroll; the image inside stays put relative to it -->
+								<div class="pan-track" style="transform:translateX(-{currentShift}px);">
+									<!-- bind:clientWidth keeps panImgWidth in sync with the image's rendered width -->
+									<img
+										src={imgSrc(section.image)}
+										alt=""
+										class="pan-img"
+										bind:clientWidth={panImgWidth}
+									/>
+								</div>
+
+								<!-- Callout is placed on the frame (not the track), so it stays fixed on screen while the image slides underneath -->
+																{#key activeImgNum}
+									{#if activeImgNum && calloutTexts[activeImgNum]}
+										{@const layout = getCalloutLayout(activeImgNum)}
+										<div
+											class={calloutClasses(layout)}
+											style={calloutPositionStyle(layout)}
+										>
+											<p
+												class="callout-text visible"
+												class:no-bg={layout.background === "transparent"}
+												style={calloutAlignStyle(layout)}
+												transition:fade={{ duration: 1000 }}
+											>
+												{calloutTexts[activeImgNum]}
+											</p>
+										</div>
+									{/if}
+								{/key}
+							</div>
+						{/if}
+
+					</div>
+				</section>
+				{/if}
+			{/if}
+		{/each}
+		<footer class="footer-section">
+			<div class="footer-image-wrapper">
+				<img src="{IMG_BASE}/footer.webp" alt="" class="footer-image" maxWidth="50%" />
+			</div>
+			<div class="footer-overlay" style="opacity:{1 - footerProgress * 2}; transform:translateY({footerProgress * 80}px);">
+				<p class="footer-credits">This is a scrollytelling adaptation of a piece originally published in 2017 by
+    <a href="https://decorrespondent.nl/7383/beeldverhaal-china-moderniseert-dus-werd-mijn-oma-s-land-onteigend/2e41dd03-487d-0dae-2897-0e8e2d26b93f" target="_blank" rel="noopener noreferrer">De Correspondent</a>,
+    in Dutch. The text has been translated into English, with light edits made to fit the scrollytelling format.
+    Please read it with that context in mind. Research, writing and visual storytelling by Kwennie Cheng.</p>
+				<p class="footer-credits">&copy; {new Date().getFullYear()}</p>
+			</div>
+		</footer>
+	</div>
+</svelte:boundary>
+
+<style>
+	/* ─── GLOBAL ──────────────────────────────────────────────────── */
+.static-background {
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	overflow: hidden;
+}
+
+.static-background img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+}
+
+	.bg-grey {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+		filter: saturate(0.1) brightness(0.90) contrast(1.2);
+		pointer-events: none;
+	}
+
+	.scrolly-container {
+		background: transparent;
+		min-height: 100vh;
+	}
+
+	/* ─── HEADER ──────────────────────────────────────────────────── */
+	.header-section {
+		position: relative;
+		width: 100%;
+		height: 100vh;
+		overflow: hidden;
+	}
+
+	.header-image-wrapper {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.header-image {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+	}
+
+	.header-overlay {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 2rem;
+		pointer-events: none;
+		transition: opacity 0.1s, transform 0.1s;
+	}
+
+	.header-overlay h1 {
+		color: white;
+		font-size: 2rem;
+		text-shadow: 0 1px 10px rgba(0, 0, 0, 1);
+		text-align: center;
+		margin-bottom: 1rem;
+	}
+
+	.header-subtitle {
+		color: rgba(255, 255, 255, 0.9);
+		font-size: 1rem;
+		text-shadow: 0 1px 10px rgba(0, 0, 0, 1);
+		text-align: center;
+		max-width: 28rem;
+		line-height: 1.5;
+	}
+	/* ─── TEXT SECTION ─────────────────────────────────────────────── */
+	.full-bleed-text {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: left;
+		padding: 2rem 1rem;
+		max-width: 75vw;
+		margin: 0 auto; /* centers the 50%-wide block horizontally */
+		font-family: var(--font-sans); /* 👈 TEXT FONT — change in app.css (--font-sans) */
+		font-size: 0.85rem;   /* ← ADD THIS: mobile text size (screens narrower than 768px) */
+	}
+
+	.full-bleed-bg {
+		position: absolute;
+		inset: -20% 0;
+		z-index: 0;
+		overflow: hidden;
+		will-change: transform;
+		
+	}
+
+	@media (min-width: 768px) {
+		.full-bleed-text {
+			max-width: 50vw;   /* desktop */
+			font-size: 1.05rem; /* 👈 DESKTOP TEXT SIZE (≥768px) */
+		}
+	}
+
+	.full-bleed-spacer {
+		height: 30vh;
+	}
+
+	/* ─── VERTICAL NATURAL SCROLL ─────────────────────────────────── */
+	.vertical-stack-section {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0px;
+		background: transparent;
+	}
+
+	.v-sticky-callout {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		pointer-events: none;
+		z-index: 10;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.v-sticky-callout.v-non-center {
+		transform: none;
+	}
+
+	.v-sticky-callout.callout-pos-bottom-center {
+		top: auto;
+		left: 0;
+		right: 0;
+		justify-content: center;
+		align-items: flex-end;
+	}
+	.v-stack-item {
+		position: relative;
+		width: 100%;
+		height: 100vh;       /* was: aspect-ratio: 2400/1350 */
+		overflow: hidden;
+	}
+
+	/* ═══ VERTICAL NATURAL SCROLL — image cropping ═════════════════
+	   GOAL: preserve aspect ratio, NEVER crop in height, crop ONLY on the
+	   LEFT side (image anchored to the right edge of the viewport).
+
+	   HOW: height is fixed to 100% of the viewport; width is left "auto" so
+	   it is always DERIVED from height → the aspect ratio is always
+	   preserved and the image is never stretched/scaled in only one axis
+	   (no horizontal-only or vertical-only scaling, on any breakpoint).
+	   The image is anchored to the RIGHT (right: 0); any horizontal
+	   overflow spills out to the LEFT and is clipped by .v-stack-item's
+	   overflow: hidden. Because height is exactly 100%, there is NEVER
+	   any vertical overflow → NEVER any cropping in height.
+
+	   Note: on a portrait (mobile) viewport a landscape image will be
+	   cropped a lot on the left — this is unavoidable if you want full
+	   height + preserved aspect ratio + no height crop. It is NOT a
+	   horizontal-only stretch; the ratio is intact.
+
+	   To crop the RIGHT side instead: change "right: 0" → "left: 0".
+	   To allow vertical cropping too (fill width always): use object-fit:
+	   cover (see commented-out block below). */
+	.v-stack-item img {
+		position: absolute; /* positioned inside .v-stack-item (position: relative) */
+		top: 0;
+		right: 0; /* ← anchor RIGHT edge → overflow/crop on the LEFT */
+		height: 100%; /* ← fill full viewport height → NO cropping in height */
+		width: auto; /* ← derived from height → aspect ratio always preserved, never one-axis stretch */
+		max-width: none; /* ← defeat global reset img{max-width:100%} (reset.css:40) which capped width to container and caused horizontal-fit scaling on mobile */
+	}
+	/* Alternative: object-fit: cover fills BOTH axes (no gaps) but WILL crop
+	   vertically on desktop when the image ratio is narrower than the
+	   viewport's. Only use this if you accept vertical cropping:
+	.v-stack-item img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: right center;
+	}
+	*/
+	
+
+	/* ─── SCROLLJACKED SECTIONS (fade, horizontal, vertical-scroll) ─ */
+	.scrolly-section {
+		position: relative;
+	}
+
+	.section-sticky {
+		position: sticky;
+		top: 0;
+		height: 100vh;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		background: transparent;
+	}
+
+	.image-frame {
+		position: relative;
+		overflow: hidden;
+		width: 100vw;
+		height: 100vh; /* was: aspect-ratio: 2400/1350 */
+	}
+
+	/*@media (max-width: 767px) {
+	.image-frame,
+	.v-stack-item {
+		aspect-ratio: 3 / 4;
+	}
+	}*/
+
+	/* ─── FADE ────────────────────────────────────────────────────── */
+	.fade-img {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+	}
+
+	/* ─── TYPED TEXT ON CURVES ────────────────────────────────────── */
+	/* Same box as the image and same crop as object-fit: cover (via preserveAspectRatio="slice") */
+	.typed-svg {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 1; /* above the images, below the normal callouts (z-index 2) */
+		pointer-events: none;
+		overflow: hidden;
+	}
+
+	.typed-text {
+		font-family: var(--font-serif); /* same font as the callouts */
+		font-size: 30px;                /* 👈 in SVG units, NOT screen pixels: scales with the image */
+		letter-spacing: 1px;            /* 👈 more = spreads the text further along the curve */
+		fill: #1a1a1a;                	/* 👈 text color */
+		white-space: pre;               /* keeps spaces when a slice ends on a space */
+		text-anchor: middle; 			/* the text is centered on the startOffset point (50% of the path) */
+	}
+
+	/* ─── HORIZONTAL SCROLL ───────────────────────────────────────── */
+	.h-scroll-wrapper {
+		overflow: hidden;
+	}
+
+	.h-track {
+		display: flex;
+		height: 100%;
+		gap: 10px;
+		transition: transform 0.15s ease-out;
+		will-change: transform;
+	}
+
+	.h-track img {
+		flex-shrink: 0;
+		object-fit: cover;
+		object-position: center;
+	}
+
+	/* ─── PAN (one wide image that slides horizontally) ───────────── */
+	.pan-track {
+		position: absolute;
+		top: 0;
+		left: 0;              /* image starts aligned to the LEFT edge of the screen */
+		height: 100%;         /* track is as tall as the screen */
+		width: max-content;   /* track grows to fit the wide image */
+		will-change: transform;
+		transition: transform 0.1s linear; /* slight smoothing; set to "none" for a 1:1 feel */
+	}
+
+	.pan-img {
+		display: block;
+		height: 100%;         /* full screen height → never cropped vertically */
+		width: auto;          /* width follows from the aspect ratio → not distorted */
+		max-width: none;      /* IMPORTANT: overrides the global img { max-width: 100% } so the image can be wider than the screen */
+	}
+
+	/* ─── VERTICAL SCROLL (scrolljacked) ──────────────────────────── */
+	.vs-scroll-wrapper {
+		overflow: hidden;
+	}
+
+	.vs-track {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10px;
+		transition: transform 0.15s ease-out;
+		will-change: transform;
+	}
+
+	.vs-track img {
+		flex-shrink: 0;
+		object-fit: cover;
+		object-position: center;
+	}
+
+	/* Images marked in CONTAIN_IMAGES: never crop, on any breakpoint.
+	   Used for alpha/graphic overlays where cropping could cut off content
+	   that isn't centered or full-bleed. */
+	.fit-contain {
+		object-fit: contain !important;
+	}
+
+	/* ─── CALLOUTS ────────────────────────────────────────────────── */
+	/* Default: centered over the image */
+	.callout-overlay-inner {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		pointer-events: none;
+		z-index: 2;
+	}
+
+	/* Override: non-centered positioning (driven by inline styles from presets) */
+	.callout-overlay-inner[class*="callout-pos-top-center"] {
+		align-items: flex-start;
+		justify-content: center;
+	}
+
+	.callout-overlay-inner[class*="callout-pos-top-left"] {
+		align-items: flex-start;
+		justify-content: flex-start;
+	}
+
+	.callout-overlay-inner[class*="callout-pos-top-right"] {
+		align-items: flex-start;
+		justify-content: flex-end;
+	}
+
+	.callout-overlay-inner[class*="callout-pos-center-right"] {
+		align-items: center;
+		justify-content: flex-end;
+	}
+
+	.callout-overlay-inner[class*="callout-pos-bottom-center"] {
+		align-items: flex-end;
+		justify-content: center;
+	}
+
+	.callout-overlay-inner[class*="callout-pos-bottom-left"] {
+		align-items: flex-end;
+		justify-content: flex-start;
+	}
+
+	.callout-overlay-inner[class*="callout-pos-bottom-right"] {
+		align-items: flex-end;
+		justify-content: flex-end;
+	}
+
+	/* Default callout text style: semi-transparent background, centered */
+	.callout-text {
+		font-family: var(--font-serif); /* 👈 CALLOUT FONT — change in app.css (--font-serif) */
+		opacity: 0;
+		transform: translateY(8px);
+		transition: opacity 0.8s ease, transform 0.8s ease;
+		font-size: 0.85rem; /* 👈 MOBILE CALLOUT FONT SIZE */
+		line-height: 1.5;
+		max-width: 80%;
+		text-align: center;
+		background: rgba(255, 255, 255, 0.3); /* Adjust callout bg transparency here */
+		padding: 0.75rem 1.25rem;
+		border-radius: 4px;
+		text-shadow: 0 1px 10px rgba(0, 0, 0, 0.2);
+	}
+
+	/* Override: no background (configured in calloutLayouts) */
+	.callout-text.no-bg {
+		background: transparent;
+		padding: 0;
+		border-radius: 0;
+	}
+
+	.callout-text.visible {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	/* ─── FOOTER ──────────────────────────────────────────────────── */
+	.footer-section {
+		position: relative;
+		font-family: var(--font-sans);
+		width: 100%;
+		height: 100vh;
+		overflow: hidden;
+	}
+
+	.footer-image-wrapper {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.footer-image {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+	}
+
+	.footer-overlay {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-end;
+		padding: 2rem;
+		pointer-events: none;
+		transition: opacity 0.1s, transform 0.1s;
+	}
+
+	.footer-credits {
+		color: rgba(0, 0, 0, 1);
+		font-size: 0.75rem;
+		text-shadow: 0 1px 5px rgba(255, 255, 255, 0.25);
+		text-align: center;
+		line-height: 1.8;
+		max-width: 75%;
+		margin: 0;
+		padding-top: 30px;
+		pointer-events: auto;
+		/*background: rgba(1, 1, 1, 0.1);
+		box-shadow: 0 0 5px 20px rgba(1, 0, 0, 0.1);*/
+	}
+
+	/* ─── RESPONSIVE ──────────────────────────────────────────────── */
+	@media (min-width: 768px) {
+		.header-overlay h1 {
+			font-size: 3rem;
+		}
+
+		.header-subtitle {
+			font-size: 1.15rem;
+			max-width: 36rem;
+		}
+
+		.callout-text {
+			font-size: 1.1rem; /* 👈 DESKTOP CALLOUT SIZE (≥768px) — keep smaller than .full-bleed-text */
+			max-width: 24rem;
+		}
+	
+	}
+
+	@media (min-width: 1024px) {
+		.header-overlay h1 {
+			font-size: 3.5rem;
+		}
+
+		.header-subtitle {
+			font-size: 1.25rem;
+			max-width: 40rem;
+		}
+
+		.full-bleed-text {
+			font-size: 0.8rem; /* 👈 DESKTOP TEXT SIZE (≥1024px) */
+		}
+
+		.callout-text {
+			max-width: 28rem;
+			font-size: 0.80rem; /* 👈 DESKTOP CALLOUT SIZE (≥1024px) — keep smaller than .full-bleed-text */
+		}
+	}
+</style>
