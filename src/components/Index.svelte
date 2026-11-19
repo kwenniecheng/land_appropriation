@@ -119,6 +119,7 @@
 		topRight: { position: "top-right", background: "transparent", textAlign: "right", paddingTop: 20, paddingLeft: 50, maxWidth: 50 },
 		centered: { position: "top-center", background: "transparent", textAlign: "center", paddingTop: 20, paddingLeft: 0},
 		centeredLower: { position: "top-center", background: "transparent", textAlign: "center", paddingTop: 80, paddingLeft: 0},
+		centeredBelowYear: { position: "top-center", background: "transparent", textAlign: "center", paddingTop: 150, paddingLeft: 0},	// sits below the "2002" label in image 12
 		centeredBottom: { position: "bottom-center", background: "transparent", textAlign: "center", paddingBottom: 50, paddingLeft: 0},
 		bottomCenter: { position: "bottom-center", background: "transparent", textAlign: "center", paddingBottom: 100, paddingLeft: 0},		// Add your own presets here:
 		// bottomRight: { position: "bottom-right", background: "transparent", textAlign: "right", paddingTop: 0, paddingLeft: 0 },
@@ -129,7 +130,7 @@
 	// Multiple images can share the same preset — no need to copy-paste.
 	const calloutLayoutMap = {
 		2: "topLeft",
-		12: "centeredLower",
+		12: "centeredBelowYear",
 		13: "centeredLower",
 		14: "centeredLower",
 		26: "bottomCenter",
